@@ -13,20 +13,22 @@ jobs:
       - name: Checkout api-specs repo
         uses: actions/checkout@v4
 
-      - name: Checkout ballerina-library
+      - name: Checkout your personal ballerina-library
         uses: actions/checkout@v4
         with:
-          repository: ballerina-platform/ballerina-library
+          # FIXED: Pointing to your repo instead of the platform repo
+          repository: TharaniDJ/ballerina-library 
           path: ballerina-library
 
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1.1.0 # Try a specific minor version if available
+        uses: ballerina-platform/setup-ballerina@v1.1.0 
         with:
-          version: 2201.10.0 # Pinning a version is safer than using 'latest'
+          version: 2201.10.0 
 
       - name: Run OpenAPI Dependabot
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          # This will now work because 'TharaniDJ/ballerina-library' contains this folder
           cd ballerina-library/dependabot
           bal run main.bal
