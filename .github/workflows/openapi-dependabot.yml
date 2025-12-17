@@ -35,6 +35,7 @@ jobs:
           ls -F
           
           bal run main.bal
+          mv UPDATE_SUMMARY.txt ../../
           cd ../../
           chmod +x ./scripts/create-pr.sh
           ./scripts/create-pr.sh
