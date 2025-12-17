@@ -35,10 +35,8 @@ jobs:
           ls -F
           
           bal run main.bal
-
-      - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          cd $GITHUB_WORKSPACE
+          cd ../../
+          chmod +x ./scripts/create-pr.sh
           ./scripts/create-pr.sh
+
+      
