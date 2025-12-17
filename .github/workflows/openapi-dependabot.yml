@@ -1,0 +1,32 @@
+name: OpenAPI Dependabot
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # Daily at 02:00 UTC
+  workflow_dispatch:     # Manual trigger
+
+jobs:
+  update-openapi-specs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout api-specs repo
+        uses: actions/checkout@v4
+
+      - name: Checkout ballerina-library
+        uses: actions/checkout@v4
+        with:
+          repository: ballerina-platform/ballerina-library
+          path: ballerina-library
+
+      - name: Set up Ballerina
+        uses: ballerina-platform/setup-ballerina@v1
+        with:
+          version: latest
+
+      - name: Run OpenAPI Dependabot
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          cd ballerina-library/dependabot
+          bal run main.bal
