@@ -20,9 +20,9 @@ jobs:
           path: ballerina-library
 
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1
+        uses: ballerina-platform/setup-ballerina@v1.1.0 # Try a specific minor version if available
         with:
-          version: latest
+          version: 2201.10.0 # Pinning a version is safer than using 'latest'
 
       - name: Run OpenAPI Dependabot
         env:
