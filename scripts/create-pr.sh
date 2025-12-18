@@ -22,13 +22,15 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== OpenAPI Spec Update & PR Creation ===${NC}\n"
 
 # Determine repository information
-CURRENT_REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+# CURRENT_REPO=$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+CURRENT_REPO=$(git remote get-url origin | sed -E 's#.*github\.com[:/]##' | sed 's/\.git$//')
 echo -e "${BLUE}Current repository: ${CURRENT_REPO}${NC}"
 
 # Check if this is a fork
 UPSTREAM_URL=$(git remote get-url upstream 2>/dev/null || echo "")
 if [ -n "$UPSTREAM_URL" ]; then
-  UPSTREAM_REPO=$(echo "$UPSTREAM_URL" | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+  # UPSTREAM_REPO=$(echo "$UPSTREAM_URL" | sed 's/.*github.com[:/]\(.*\)\.git/\1/')
+  UPSTREAM_REPO=$(echo "$UPSTREAM_URL" | sed -E 's#.*github\.com[:/]##' | sed 's/\.git$//')
   echo -e "${BLUE}Upstream repository: ${UPSTREAM_REPO}${NC}"
   IS_FORK=true
 else
