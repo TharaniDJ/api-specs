@@ -1,44 +1,91 @@
+# name: OpenAPI Dependabot
+
+# on:
+#   schedule:
+#     - cron: "0 2 * * *"   # Daily at 02:00 UTC
+#   workflow_dispatch:     # Manual trigger
+
+# jobs:
+#   update-openapi-specs:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout api-specs repo
+#         uses: actions/checkout@v4
+
+#       - name: Checkout your personal ballerina-library
+#         uses: actions/checkout@v4
+#         with:
+#           repository: TharaniDJ/ballerina-library 
+#           path: ballerina-library
+
+#       - name: Set up Ballerina
+#         uses: ballerina-platform/setup-ballerina@v1.1.0 
+#         with:
+#           version: 2201.10.0
+
+#       - name: Run OpenAPI Dependabot
+#         env:
+#           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+#         run: |
+#           # Use the exact case: Dependabot
+#           cd ballerina-library/Dependabot
+          
+#           # This lists files so you can see repos.json in the logs if it fails
+#           ls -F
+          
+#           bal run main.bal
+#           mv UPDATE_SUMMARY.txt ../../
+#           cd ../../
+#           rm -rf ballerina-library
+#           chmod +x ./scripts/create-pr.sh
+#           ./scripts/create-pr.sh
+
+      
 name: OpenAPI Dependabot
 
 on:
   schedule:
-    - cron: "0 2 * * *"   # Daily at 02:00 UTC
-  workflow_dispatch:     # Manual trigger
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
 jobs:
   update-openapi-specs:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout api-specs repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
 
-      - name: Checkout your personal ballerina-library
+      - name: Checkout ballerina-library
         uses: actions/checkout@v4
         with:
-          repository: TharaniDJ/ballerina-library 
+          repository: TharaniDJ/ballerina-library
           path: ballerina-library
 
       - name: Set up Ballerina
-        uses: ballerina-platform/setup-ballerina@v1.1.0 
+        uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
           version: 2201.10.0
 
-      - name: Run OpenAPI Dependabot
+      - name: Run Dependabot
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # Use the exact case: Dependabot
+          # Copy repos.json from api-specs to Dependabot dir
+          cp repos.json ballerina-library/Dependabot/
+          
+          # Run Ballerina
           cd ballerina-library/Dependabot
-          
-          # This lists files so you can see repos.json in the logs if it fails
-          ls -F
-          
           bal run main.bal
-          mv UPDATE_SUMMARY.txt ../../
+          
+          # Copy results back to api-specs root
+          cp repos.json ../../
+          cp UPDATE_SUMMARY.txt ../../
           cd ../../
+          
+          # Cleanup and run PR script
           rm -rf ballerina-library
           chmod +x ./scripts/create-pr.sh
           ./scripts/create-pr.sh
-
-      
