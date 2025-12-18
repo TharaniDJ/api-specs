@@ -37,7 +37,7 @@ jobs:
           bal run main.bal
           mv UPDATE_SUMMARY.txt ../../
           cd ../../
-          git add .
+          rm -rf ballerina-library
           chmod +x ./scripts/create-pr.sh
           ./scripts/create-pr.sh
 
