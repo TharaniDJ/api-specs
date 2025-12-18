@@ -73,16 +73,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          # Copy repos.json from api-specs to Dependabot dir
+          # Copy repos.json to Dependabot dir
           cp repos.json ballerina-library/Dependabot/
           
           # Run Ballerina
           cd ballerina-library/Dependabot
           bal run main.bal
           
-          # Copy results back to api-specs root
+          # Copy ALL results back to api-specs root
           cp repos.json ../../
           cp UPDATE_SUMMARY.txt ../../
+          cp -r specs ../../  # ← ADD THIS LINE
           cd ../../
           
           # Cleanup and run PR script
