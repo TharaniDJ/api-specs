@@ -6,13 +6,7 @@
         "lastVersion": "v2134",
         "lastChecked": "2025-01-01T00:00:00Z",
         "specPath": "openapi/spec3.yaml",
-        "releaseAssetName": "spec3.yaml",
-        "connector": {
-            "owner": "ballerina-platform",
-            "repo": "module-ballerinax-stripe",
-            "branch": "main",
-            "path": "ballerina"
-        }
+        "releaseAssetName": "spec3.yaml"
     },
     {
         "owner": "twilio",
@@ -21,13 +15,7 @@
         "lastVersion": "2.5.8",
         "lastChecked": "2025-01-01T00:00:00Z",
         "specPath": "spec/json/twilio_api_v2010.json",
-        "releaseAssetName": "twilio_api_v2010.json",
-        "connector": {
-            "owner": "ballerina-platform",
-            "repo": "module-ballerinax-twilio",
-            "branch": "master",
-            "path": "ballerina"
-        }
+        "releaseAssetName": "twilio_api_v2010.json"
     },
     {
         "owner": "openai",
@@ -36,12 +24,6 @@
         "lastVersion": "2.0.0",
         "lastChecked": "2025-01-01T00:00:00Z",
         "specPath": "openapi.yaml",
-        "releaseAssetName": "openapi.yaml",
-        "connector": {
-            "owner": "ballerina-platform",
-            "repo": "module-ballerinax-openai",
-            "branch": "main",
-            "path": "ballerina"
-        }
+        "releaseAssetName": "openapi.yaml"
     }
 ]
