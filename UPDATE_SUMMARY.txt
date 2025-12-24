@@ -1,2 +1,1 @@
-- Stripe OpenAPI: v2134 → v2148
-- Twilio OpenAPI: 2.5.8 → 2.6.0
+- Stripe OpenAPI: v2148 → v2149
