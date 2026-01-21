@@ -1,5 +1,8 @@
 name: OpenAPI Dependabot
 
+# This workflow runs daily to check for updates to OpenAPI specifications. If updates are found,
+# it creates a new branch, commits the changes, and opens a pull request with relevant details
+
 on:
   schedule:
     - cron: "0 2 * * *"  # Run daily at 2 AM UTC
