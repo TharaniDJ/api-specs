@@ -144,7 +144,7 @@ function saveSpec(string content, string localPath) returns error? {
         check file:createDir(dirPath, file:RECURSIVE);
     }
     
-    // Write as openapi.yaml (always YAML format)
+    // Write content to file
     check io:fileWriteString(localPath, content);
     io:println(string `  ✅ Saved to ${localPath}`);
     return;
