@@ -83,7 +83,7 @@ function extractApiVersion(string content) returns string|error {
 function downloadSpec(github:Client githubClient, string owner, string repo, 
                      string assetName, string tagName, string specPath) returns string|error {
     
-    io:println(string `  📥 Downloading ${assetName}...`);
+    io:println(string `  Downloading ${assetName}...`);
     
     string? downloadUrl = ();
     
@@ -96,7 +96,7 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
             foreach github:ReleaseAsset asset in assets {
                 if asset.name == assetName {
                     downloadUrl = asset.browser_download_url;
-                    io:println(string `  ✅ Found in release assets`);
+                    io:println(string `  Found in release assets`);
                     break;
                 }
             }
@@ -105,7 +105,7 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
     
     // If not found in assets, try direct download from repo
     if downloadUrl is () {
-        io:println(string `  ℹ️  Not in release assets, downloading from repository...`);
+        io:println(string `  Not in release assets, downloading from repository...`);
         downloadUrl = string `https://raw.githubusercontent.com/${owner}/${repo}/${tagName}/${specPath}`;
     }
     
@@ -132,7 +132,7 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
         textContent = check string:fromBytes(content);
     }
     
-    io:println(string `  ✅ Downloaded spec`);
+    io:println(string `  Downloaded spec`);
     return textContent;
 }
 
@@ -146,7 +146,7 @@ function saveSpec(string content, string localPath) returns error? {
     
     // Write content to file
     check io:fileWriteString(localPath, content);
-    io:println(string `  ✅ Saved to ${localPath}`);
+    io:println(string `  Saved to ${localPath}`);
     return;
 }
 
@@ -162,7 +162,7 @@ function createMetadataFile(Repository repo, string version, string dirPath) ret
     
     string metadataPath = string `${dirPath}/.metadata.json`;
     check io:fileWriteJson(metadataPath, metadata);
-    io:println(string `  ✅ Created metadata at ${metadataPath}`);
+    io:println(string `  Created metadata at ${metadataPath}`);
     return;
 }
 
@@ -183,7 +183,7 @@ function createPullRequest(github:Client githubClient, string owner, string repo
                           string branchName, string baseBranch, string title, 
                           string body) returns string|error {
     
-    io:println("\n🔗 Creating Pull Request...");
+    io:println("\nCreating Pull Request...");
     
     github:PullRequest pr = check githubClient->/repos/[owner]/[repo]/pulls.post({
         title: title,
@@ -193,15 +193,15 @@ function createPullRequest(github:Client githubClient, string owner, string repo
     });
     
     string prUrl = pr.html_url;
-    io:println(string `✅ Pull Request created successfully!`);
-    io:println(string `🔗 PR URL: ${prUrl}`);
+    io:println(string `Pull Request created successfully!`);
+    io:println(string `PR URL: ${prUrl}`);
     
     // Add labels to the PR
     int prNumber = pr.number;
     _ = check githubClient->/repos/[owner]/[repo]/issues/[prNumber]/labels.post({
         labels: ["openapi-update", "automated", "dependencies"]
     });
-    io:println("🏷️  Added labels to PR");
+    io:println("Added labels to PR");
     
     return prUrl;
 }
@@ -226,7 +226,7 @@ public function main() returns error? {
     // Get GitHub token
     string? token = os:getEnv("GH_TOKEN");
     if token is () {
-        io:println("❌ Error: GH_TOKEN environment variable not set");
+        io:println("Error: GH_TOKEN environment variable not set");
         io:println("Please set the GH_TOKEN environment variable before running this program.");
         return;
     }
@@ -235,11 +235,11 @@ public function main() returns error? {
     
     // Validate token
     if tokenValue.length() == 0 {
-        io:println("❌ Error: GH_TOKEN is empty!");
+        io:println("Error: GH_TOKEN is empty!");
         return;
     }
     
-    io:println(string `🔍 Token loaded (length: ${tokenValue.length()})`);
+    io:println(string `Token loaded (length: ${tokenValue.length()})`);
     
     // Initialize GitHub client
     github:Client githubClient = check new ({
@@ -271,7 +271,7 @@ public function main() returns error? {
             boolean isPrerelease = latestRelease.prerelease;
             
             if isPrerelease || isDraft {
-                io:println(string `  ⏭️  Skipping pre-release: ${tagName}`);
+                io:println(string `  Skipping pre-release: ${tagName}`);
             } else {
                 io:println(string `  Latest release tag: ${tagName}`);
                 if publishedAt is string {
@@ -279,7 +279,7 @@ public function main() returns error? {
                 }
                 
                 if hasVersionChanged(repo.lastVersion, tagName) {
-                    io:println("  ✅ UPDATE AVAILABLE!");
+                    io:println("  UPDATE AVAILABLE!");
                     // Download the spec to extract version
                     string|error specContent = downloadSpec(
                         githubClient, 
@@ -290,18 +290,18 @@ public function main() returns error? {
                         repo.specPath
                     );
                     if specContent is error {
-                        io:println("  ❌ Download failed: " + specContent.message());
+                        io:println("  Download failed: " + specContent.message());
                     } else {
                         // Extract API version from spec
                         string apiVersion = "";
                         var apiVersionResult = extractApiVersion(specContent);
                         if apiVersionResult is error {
-                            io:println("  ⚠️  Could not extract API version, using tag: " + tagName);
+                            io:println("  Could not extract API version, using tag: " + tagName);
                             // Fall back to tag name (remove 'v' prefix if exists)
                             apiVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
                         } else {
                             apiVersion = apiVersionResult;
-                            io:println("  📌 API Version: " + apiVersion);
+                            io:println("  API Version: " + apiVersion);
                         }
                         // Structure: openapi/{vendor}/{api}/{apiVersion}/
                         string versionDir = "../openapi/" + repo.vendor + "/" + repo.api + "/" + apiVersion;
@@ -309,12 +309,12 @@ public function main() returns error? {
                         // Save the spec
                         error? saveResult = saveSpec(specContent, localPath);
                         if saveResult is error {
-                            io:println("  ❌ Save failed: " + saveResult.message());
+                            io:println("  Save failed: " + saveResult.message());
                         } else {
                             // Create metadata.json
                             error? metadataResult = createMetadataFile(repo, apiVersion, versionDir);
                             if metadataResult is error {
-                                io:println("  ⚠️  Metadata creation failed: " + metadataResult.message());
+                                io:println("  Metadata creation failed: " + metadataResult.message());
                             }
                             // Track the update
                             updates.push({
@@ -330,17 +330,17 @@ public function main() returns error? {
                         }
                     }
                 } else {
-                    io:println(string `  ℹ️  No updates`);
+                    io:println(string `  No updates`);
                 }
             }
         } else {
             string errorMsg = latestRelease.message();
             if errorMsg.includes("404") {
-                io:println(string `  ❌ Error: No releases found for ${repo.owner}/${repo.repo}`);
+                io:println(string `  Error: No releases found for ${repo.owner}/${repo.repo}`);
             } else if errorMsg.includes("401") || errorMsg.includes("403") {
-                io:println(string `  ❌ Error: Authentication failed`);
+                io:println(string `  Error: Authentication failed`);
             } else {
-                io:println(string `  ❌ Error: ${errorMsg}`);
+                io:println(string `  Error: ${errorMsg}`);
             }
         }
         
@@ -349,7 +349,7 @@ public function main() returns error? {
     
     // Report updates
     if updates.length() > 0 {
-        io:println(string `\n🎉 Found ${updates.length()} updates:\n`);
+        io:println(string `\nFound ${updates.length()} updates:\n`);
         
         // Create update summary
         string[] updateSummary = [];
@@ -361,7 +361,7 @@ public function main() returns error? {
         
         // Update repos.json
         check io:fileWriteJson("../repos.json", repos.toJson());
-        io:println("\n✅ Updated repos.json with new versions");
+        io:println("\nUpdated repos.json with new versions");
         
         // Write update summary
         string summaryContent = string:'join("\n", ...updateSummary);
@@ -375,7 +375,7 @@ public function main() returns error? {
         // Get repository info
         [string, string]|error repoInfo = getCurrentRepo();
         if repoInfo is error {
-            io:println("⚠️  Could not create PR automatically. Changes are ready in working directory.");
+            io:println("Could not create PR automatically. Changes are ready in working directory.");
             io:println("Please create a PR manually with the following branch name:");
             io:println(string `  ${branchName}`);
             return;
@@ -403,7 +403,7 @@ public function main() returns error? {
             "- [ ] Run tests\n" +
             "- [ ] Update documentation if needed\n\n" +
             "---\n" +
-            "🤖 This PR was automatically generated by the OpenAPI Dependabot";
+            "This PR was automatically generated by the OpenAPI Dependabot";
         
         // Create the PR
         string|error prUrl = createPullRequest(
@@ -416,13 +416,13 @@ public function main() returns error? {
             prBody
         );
         if prUrl is string {
-            io:println("\n✨ Done! Review the PR at: " + prUrl);
+            io:println("\nDone! Review the PR at: " + prUrl);
         } else {
-            io:println("\n⚠️  PR creation failed: " + prUrl.message());
+            io:println("\nPR creation failed: " + prUrl.message());
             io:println("Changes are committed. Please create PR manually.");
         }
         
     } else {
-        io:println("✨ All specifications are up-to-date!");
+        io:println("All specifications are up-to-date!");
     }
 }
