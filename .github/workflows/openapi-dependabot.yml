@@ -20,7 +20,7 @@ jobs:
     
     steps:
       - name: Checkout api-specs repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_TOKEN }}
       
@@ -31,8 +31,8 @@ jobs:
       
       - name: Configure Git
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config --global user.email "ballerina-bot@users.noreply.github.com"
+          git config --global user.name "BALLERINA_BOT"
       
       - name: Run Dependabot Monitor
         env:
@@ -46,15 +46,15 @@ jobs:
         id: check_updates
         run: |
           if [ -f "UPDATE_SUMMARY.txt" ]; then
-            echo "updates_found=true" >> $GITHUB_OUTPUT
+            echo "UPDATES_FOUND=true" >> $GITHUB_ENV
             echo "Updates detected!"
           else
-            echo "updates_found=false" >> $GITHUB_OUTPUT
+            echo "UPDATES_FOUND=false" >> $GITHUB_ENV
             echo "No updates found"
           fi
       
       - name: Create and Push Branch
-        if: steps.check_updates.outputs.updates_found == 'true'
+        if: env.UPDATES_FOUND == 'true'
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           BRANCH_NAME="openapi-update-${TIMESTAMP}"
@@ -66,22 +66,14 @@ jobs:
             exit 0
           fi
           UPDATE_SUMMARY=$(cat UPDATE_SUMMARY.txt)
-          COMMIT_MSG="chore: Update OpenAPI specifications\n\n${UPDATE_SUMMARY}\n\nAutomated update by OpenAPI Dependabot"
+          COMMIT_MSG="chore: [Automated] Update to latest OpenAPI specifications by OpenAPI Dependabot"
           git commit -m "$COMMIT_MSG"
           git push -u origin "$BRANCH_NAME"
           echo "Branch pushed successfully"
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
-      - name: Ensure Labels Exist
-        if: steps.check_updates.outputs.updates_found == 'true' && env.BRANCH_NAME != ''
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          # Create labels if they don't exist
-          gh label create "openapi-update" --description "OpenAPI specification updates" --color "0366d6" --force
-          gh label create "automated" --description "Automated changes" --color "bfd4f2" --force
-          gh label create "dependencies" --description "Dependency updates" --color "0366d6" --force
+      
       - name: Create Pull Request
-        if: steps.check_updates.outputs.updates_found == 'true' && env.BRANCH_NAME != ''
+        if: env.UPDATES_FOUND == 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
@@ -117,4 +109,5 @@ jobs:
             --label "openapi-update,automated,dependencies"
           echo "Pull Request created successfully!"
           rm -f UPDATE_SUMMARY.txt
+          
           
