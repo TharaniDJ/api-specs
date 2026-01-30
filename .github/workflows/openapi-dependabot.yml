@@ -20,7 +20,7 @@ jobs:
     
     steps:
       - name: Checkout api-specs repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_TOKEN }}
       
@@ -78,7 +78,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           UPDATE_SUMMARY=$(cat UPDATE_SUMMARY.txt)
-          PR_TITLE="chore: Update OpenAPI Specifications - $(date +%Y-%m-%d)"
+          PR_TITLE="[Dependabot] chore: Update OpenAPI Specifications - $(date +%Y-%m-%d)"
           PR_BODY=$(cat <<EOF
           ## OpenAPI Specification Updates
 

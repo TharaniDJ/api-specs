@@ -13,11 +13,12 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-import ballerina/io;
-import ballerina/os;
-import ballerina/http;
+
 import ballerina/file;
+import ballerina/http;
+import ballerina/io;
 import ballerina/lang.regexp;
+import ballerina/os;
 import ballerinax/github;
 
 // Repository record type
@@ -55,27 +56,27 @@ function hasVersionChanged(string oldVersion, string newVersion) returns boolean
 function extractApiVersion(string content) returns string|error {
     // Try to find "version:" under "info:" section
     // This is a simple regex-based extraction
-    
+
     // Split content by lines
     string[] lines = regexp:split(re `\n`, content);
     boolean inInfoSection = false;
-    
+
     foreach string line in lines {
         string trimmedLine = line.trim();
-        
+
         // Check if we're entering info section
         if trimmedLine == "info:" {
             inInfoSection = true;
             continue;
         }
-        
+
         // If we're in info section, look for version
         if inInfoSection {
             // Exit info section if we hit another top-level key
             if !line.startsWith(" ") && !line.startsWith("\t") && trimmedLine != "" && !trimmedLine.startsWith("#") {
                 break;
             }
-            
+
             // Look for version field
             if trimmedLine.startsWith("version:") {
                 // Extract version value
@@ -89,21 +90,21 @@ function extractApiVersion(string content) returns string|error {
             }
         }
     }
-    
+
     return error("Could not extract API version from spec");
 }
 
 // Download OpenAPI spec from release asset or repo
-function downloadSpec(github:Client githubClient, string owner, string repo, 
-                     string assetName, string tagName, string specPath) returns string|error {
-    
+function downloadSpec(github:Client githubClient, string owner, string repo,
+        string assetName, string tagName, string specPath) returns string|error {
+
     io:println(string `  Downloading ${assetName}...`);
-    
+
     string? downloadUrl = ();
-    
+
     // Try to get from release assets first
     github:Release|error release = githubClient->/repos/[owner]/[repo]/releases/tags/[tagName]();
-    
+
     if release is github:Release {
         github:ReleaseAsset[]? assets = release.assets;
         if assets is github:ReleaseAsset[] {
@@ -116,28 +117,28 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
             }
         }
     }
-    
+
     // If not found in assets, try direct download from repo
     if downloadUrl is () {
         io:println(string `  Not in release assets, downloading from repository...`);
         downloadUrl = string `https://raw.githubusercontent.com/${owner}/${repo}/${tagName}/${specPath}`;
     }
-    
+
     // Download the file
     http:Client httpClient = check new (<string>downloadUrl);
     http:Response response = check httpClient->get("");
-    
+
     if response.statusCode != 200 {
         return error(string `Failed to download: HTTP ${response.statusCode} from ${<string>downloadUrl}`);
     }
-    
+
     // Get content
     string|byte[]|error content = response.getTextPayload();
-    
+
     if content is error {
         return error("Failed to get content from response");
     }
-    
+
     string textContent;
     if content is string {
         textContent = content;
@@ -145,7 +146,7 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
         // Convert bytes to string
         textContent = check string:fromBytes(content);
     }
-    
+
     io:println(string `  Downloaded spec`);
     return textContent;
 }
@@ -157,7 +158,7 @@ function saveSpec(string content, string localPath) returns error? {
     if !check file:test(dirPath, file:EXISTS) {
         check file:createDir(dirPath, file:RECURSIVE);
     }
-    
+
     // Write content to file
     check io:fileWriteString(localPath, content);
     io:println(string `  Saved to ${localPath}`);
@@ -173,7 +174,7 @@ function createMetadataFile(Repository repo, string version, string dirPath) ret
         "description": repo.description,
         "tags": repo.tags
     };
-    
+
     string metadataPath = string `${dirPath}/.metadata.json`;
     check io:fileWriteJson(metadataPath, metadata);
     io:println(string `  Created metadata at ${metadataPath}`);
@@ -196,7 +197,7 @@ function removeQuotes(string s) returns string {
 public function main() returns error? {
     io:println("=== Dependabot OpenAPI Monitor ===");
     io:println("Starting OpenAPI specification monitoring...\n");
-    
+
     // Get GitHub token
     string? token = os:getEnv("GH_TOKEN");
     if token is () {
@@ -204,46 +205,46 @@ public function main() returns error? {
         io:println("Please set the GH_TOKEN environment variable before running this program.");
         return;
     }
-    
+
     string tokenValue = <string>token;
-    
+
     // Validate token
     if tokenValue.length() == 0 {
         io:println("Error: GH_TOKEN is empty!");
         return;
     }
-    
+
     io:println(string `Token loaded (length: ${tokenValue.length()})`);
-    
+
     // Initialize GitHub client
     github:Client githubClient = check new ({
         auth: {
             token: tokenValue
         }
     });
-    
+
     // Load repositories from repos.json
     json reposJson = check io:fileReadJson("../repos.json");
     Repository[] repos = check reposJson.cloneWithType();
-    
+
     io:println(string `Found ${repos.length()} repositories to monitor.\n`);
-    
+
     // Track updates
     UpdateResult[] updates = [];
-    
+
     // Check each repository
     foreach Repository repo in repos {
         io:println(string `Checking: ${repo.name} (${repo.vendor}/${repo.api})`);
-        
+
         // Get latest release
         github:Release|error latestRelease = githubClient->/repos/[repo.owner]/[repo.repo]/releases/latest();
-        
+
         if latestRelease is github:Release {
             string tagName = latestRelease.tag_name;
             string? publishedAt = latestRelease.published_at;
             boolean isDraft = latestRelease.draft;
             boolean isPrerelease = latestRelease.prerelease;
-            
+
             if isPrerelease || isDraft {
                 io:println(string `  Skipping pre-release: ${tagName}`);
             } else {
@@ -251,17 +252,17 @@ public function main() returns error? {
                 if publishedAt is string {
                     io:println(string `  Published: ${publishedAt}`);
                 }
-                
+
                 if hasVersionChanged(repo.lastVersion, tagName) {
                     io:println("  UPDATE AVAILABLE!");
                     // Download the spec to extract version
                     string|error specContent = downloadSpec(
-                        githubClient, 
-                        repo.owner, 
-                        repo.repo, 
-                        repo.releaseAssetName, 
-                        tagName,
-                        repo.specPath
+                            githubClient,
+                            repo.owner,
+                            repo.repo,
+                            repo.releaseAssetName,
+                            tagName,
+                            repo.specPath
                     );
                     if specContent is error {
                         io:println("  Download failed: " + specContent.message());
@@ -317,14 +318,14 @@ public function main() returns error? {
                 io:println(string `  Error: ${errorMsg}`);
             }
         }
-        
+
         io:println("");
     }
-    
+
     // Report updates
     if updates.length() > 0 {
         io:println(string `\nFound ${updates.length()} updates:\n`);
-        
+
         // Create update summary
         string[] updateSummary = [];
         foreach UpdateResult update in updates {
@@ -332,19 +333,20 @@ public function main() returns error? {
             io:println(summary);
             updateSummary.push(summary);
         }
-        
+
         // Update repos.json
         check io:fileWriteJson("../repos.json", repos.toJson());
         io:println("\nUpdated repos.json with new versions");
-        
+
         // Write update summary for the workflow to use
         string summaryContent = string:'join("\n", ...updateSummary);
         check io:fileWriteString("../UPDATE_SUMMARY.txt", summaryContent);
         io:println("Created UPDATE_SUMMARY.txt for workflow");
-        
+
         io:println("\nUpdate detection complete. GitHub Actions workflow will handle PR creation.");
-        
+
     } else {
         io:println("All specifications are up-to-date!");
     }
 }
+
