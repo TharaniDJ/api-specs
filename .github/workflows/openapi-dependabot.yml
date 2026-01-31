@@ -17,23 +17,23 @@ on:
 jobs:
   update-openapi-specs:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout api-specs repo
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.GH_TOKEN }}
-      
+
       - name: Set up Ballerina
         uses: ballerina-platform/setup-ballerina@v1.1.0
         with:
           version: ${{ inputs.ballerina-version || '2201.13.1' }}
-      
+
       - name: Configure Git
         run: |
           git config --global user.email "ballerina-bot@users.noreply.github.com"
           git config --global user.name "BALLERINA_BOT"
-      
+
       - name: Run Dependabot Monitor
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -41,7 +41,7 @@ jobs:
           cd dependabot
           bal run
           cd ..
-      
+
       - name: Check for updates
         id: check_updates
         run: |
@@ -52,7 +52,7 @@ jobs:
             echo "UPDATES_FOUND=false" >> $GITHUB_ENV
             echo "No updates found"
           fi
-      
+
       - name: Create and Push Branch
         if: env.UPDATES_FOUND == 'true'
         run: |
@@ -71,7 +71,7 @@ jobs:
           git push -u origin "$BRANCH_NAME"
           echo "Branch pushed successfully"
           echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
-      
+
       - name: Create Pull Request
         if: env.UPDATES_FOUND == 'true'
         env:
@@ -109,5 +109,3 @@ jobs:
             --label "openapi-update,automated,dependencies"
           echo "Pull Request created successfully!"
           rm -f UPDATE_SUMMARY.txt
-          
-          

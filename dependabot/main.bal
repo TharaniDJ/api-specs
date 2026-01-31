@@ -103,24 +103,22 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
     string? downloadUrl = ();
 
     // Try to get from release assets first
-    github:Release|error release = githubClient->/repos/[owner]/[repo]/releases/tags/[tagName]();
+    github:Release release = check githubClient->/repos/[owner]/[repo]/releases/tags/[tagName]();
 
-    if release is github:Release {
-        github:ReleaseAsset[]? assets = release.assets;
-        if assets is github:ReleaseAsset[] {
-            foreach github:ReleaseAsset asset in assets {
-                if asset.name == assetName {
-                    downloadUrl = asset.browser_download_url;
-                    io:println(string `  Found in release assets`);
-                    break;
-                }
+    github:ReleaseAsset[]? assets = release.assets;
+    if assets is github:ReleaseAsset[] {
+        foreach github:ReleaseAsset asset in assets {
+            if asset.name == assetName {
+                downloadUrl = asset.browser_download_url;
+                io:println(string `  Found in release assets`);
+                break;
             }
         }
     }
 
     // If not found in assets, try direct download from repo
     if downloadUrl is () {
-        io:println(string `  Not in release assets, downloading from repository...`);
+        io:println(string `Not in release assets, downloading from repository...`);
         downloadUrl = string `https://raw.githubusercontent.com/${owner}/${repo}/${tagName}/${specPath}`;
     }
 
@@ -133,11 +131,7 @@ function downloadSpec(github:Client githubClient, string owner, string repo,
     }
 
     // Get content
-    string|byte[]|error content = response.getTextPayload();
-
-    if content is error {
-        return error("Failed to get content from response");
-    }
+    string|byte[] content = check response.getTextPayload();
 
     string textContent;
     if content is string {
@@ -349,4 +343,3 @@ public function main() returns error? {
         io:println("All specifications are up-to-date!");
     }
 }
-
