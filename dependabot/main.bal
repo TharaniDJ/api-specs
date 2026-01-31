@@ -184,21 +184,99 @@ function createMetadataFile(Repository repo, string version, string dirPath) ret
 }
 
 // Remove quotes from string
+// Remove quotes from string
 function removeQuotes(string s) returns string {
-    string result = "";
-    foreach int i in 0 ..< s.length() {
-        string c = s.substring(i, i + 1);
-        if c != "\"" && c != "'" {
-            result += c;
-        }
-    }
-    return result;
+    return re `["']`.replace(s, "");
 }
 
 // Utility function to print logs with indentation
 isolated function print(string message, string level, int indentation) {
     string spaces = string:'join("", from int i in 0 ..< indentation select " ");
     io:println(string `${spaces}${level} ${message}`);
+}
+
+// Process a single repository release
+function processRelease(github:Client githubClient, Repository repo, github:Release latestRelease,
+        UpdateResult[] updates) returns error? {
+    string tagName = latestRelease.tag_name;
+    string? publishedAt = latestRelease.published_at;
+    boolean isDraft = latestRelease.draft;
+    boolean isPrerelease = latestRelease.prerelease;
+
+    if isPrerelease || isDraft {
+        print(string `Skipping pre-release: ${tagName}`, "Info", 2);
+        return;
+    }
+
+    print(string `Latest release tag: ${tagName}`, "Info", 2);
+    if publishedAt is string {
+        print(string `Published: ${publishedAt}`, "Info", 2);
+    }
+
+    if !hasVersionChanged(repo.lastVersion, tagName) {
+        print(string `No updates`, "Info", 2);
+        return;
+    }
+
+    print("UPDATE AVAILABLE!", "Info", 2);
+    check handleUpdate(githubClient, repo, tagName, updates);
+}
+
+// Handle repository update
+function handleUpdate(github:Client githubClient, Repository repo, string tagName,
+        UpdateResult[] updates) returns error? {
+    // Download the spec to extract version
+    string|error specContent = downloadSpec(
+            githubClient,
+            repo.owner,
+            repo.repo,
+            repo.releaseAssetName,
+            tagName,
+            repo.specPath
+    );
+
+    if specContent is error {
+        print("Download failed: " + specContent.message(), "Info", 2);
+        return;
+    }
+
+    // Extract API version from spec
+    string apiVersion = check extractVersionFromSpec(specContent, tagName);
+
+    // Structure: openapi/{vendor}/{api}/{apiVersion}/
+    string versionDir = "../openapi/" + repo.vendor + "/" + repo.api + "/" + apiVersion;
+    string localPath = versionDir + "/openapi.yaml";
+
+    // Save the spec
+    check saveSpec(specContent, localPath);
+
+    // Create metadata.json
+    check createMetadataFile(repo, apiVersion, versionDir);
+
+    // Track the update
+    updates.push({
+        repo: repo,
+        oldVersion: repo.lastVersion,
+        newVersion: tagName,
+        apiVersion: apiVersion,
+        downloadUrl: "https://github.com/" + repo.owner + "/" + repo.repo + "/releases/tag/" + tagName,
+        localPath: localPath
+    });
+
+    // Update the repo record
+    repo.lastVersion = tagName;
+}
+
+// Extract version from spec with fallback
+function extractVersionFromSpec(string specContent, string tagName) returns string|error {
+    var apiVersionResult = extractApiVersion(specContent);
+    if apiVersionResult is error {
+        print("Could not extract API version, using tag: " + tagName, "Info", 2);
+        // Fall back to tag name (remove 'v' prefix if exists)
+        return tagName.startsWith("v") ? tagName.substring(1) : tagName;
+    }
+    print("API Version: " + apiVersionResult, "Info", 2);
+    return apiVersionResult;
 }
 
 // Main monitoring function
@@ -209,8 +287,14 @@ public function main() returns error? {
     // Get GitHub token
     string? token = os:getEnv("GH_TOKEN");
     if token is () {
-        io:println("Error: GH_TOKEN environment variable not set");
-        io:println("Please set the GH_TOKEN environment variable before running this program.");
+        token = os:getEnv("packagePAT");
+    }
+    if token is () {
+        token = os:getEnv("BALLERINA_BOT_TOKEN");
+    }
+    if token is () {
+        io:println("Error: GH_TOKEN, packagePAT, or BALLERINA_BOT_TOKEN environment variable not set");
+        io:println("Please set one of these environment variables before running this program.");
         return;
     }
 
@@ -238,73 +322,9 @@ public function main() returns error? {
         github:Release|error latestRelease = githubClient->/repos/[repo.owner]/[repo.repo]/releases/latest();
 
         if latestRelease is github:Release {
-            string tagName = latestRelease.tag_name;
-            string? publishedAt = latestRelease.published_at;
-            boolean isDraft = latestRelease.draft;
-            boolean isPrerelease = latestRelease.prerelease;
-
-            if isPrerelease || isDraft {
-                print(string `Skipping pre-release: ${tagName}`, "Info", 2);
-            } else {
-                print(string `Latest release tag: ${tagName}`, "Info", 2);
-                if publishedAt is string {
-                    print(string `Published: ${publishedAt}`, "Info", 2);
-                }
-
-                if hasVersionChanged(repo.lastVersion, tagName) {
-                    print("UPDATE AVAILABLE!", "Info", 2);
-                    // Download the spec to extract version
-                    string|error specContent = downloadSpec(
-                            githubClient,
-                            repo.owner,
-                            repo.repo,
-                            repo.releaseAssetName,
-                            tagName,
-                            repo.specPath
-                    );
-                    if specContent is error {
-                        print("Download failed: " + specContent.message(), "Info", 2);
-                    } else {
-                        // Extract API version from spec
-                        string apiVersion = "";
-                        var apiVersionResult = extractApiVersion(specContent);
-                        if apiVersionResult is error {
-                            print("Could not extract API version, using tag: " + tagName, "Info", 2);
-                            // Fall back to tag name (remove 'v' prefix if exists)
-                            apiVersion = tagName.startsWith("v") ? tagName.substring(1) : tagName;
-                        } else {
-                            apiVersion = apiVersionResult;
-                            print("API Version: " + apiVersion, "Info", 2);
-                        }
-                        // Structure: openapi/{vendor}/{api}/{apiVersion}/
-                        string versionDir = "../openapi/" + repo.vendor + "/" + repo.api + "/" + apiVersion;
-                        string localPath = versionDir + "/openapi.yaml";
-                        // Save the spec
-                        error? saveResult = saveSpec(specContent, localPath);
-                        if saveResult is error {
-                            print("Save failed: " + saveResult.message(), "Info", 2);
-                        } else {
-                            // Create metadata.json
-                            error? metadataResult = createMetadataFile(repo, apiVersion, versionDir);
-                            if metadataResult is error {
-                                print("Metadata creation failed: " + metadataResult.message(), "Info", 2);
-                            }
-                            // Track the update
-                            updates.push({
-                                repo: repo,
-                                oldVersion: repo.lastVersion,
-                                newVersion: tagName,
-                                apiVersion: apiVersion,
-                                downloadUrl: "https://github.com/" + repo.owner + "/" + repo.repo + "/releases/tag/" + tagName,
-                                localPath: localPath
-                            });
-                            // Update the repo record
-                            repo.lastVersion = tagName;
-                        }
-                    }
-                } else {
-                    print(string `No updates`, "Info", 2);
-                }
+            error? result = processRelease(githubClient, repo, latestRelease, updates);
+            if result is error {
+                print("Processing failed: " + result.message(), "Info", 2);
             }
         } else {
             string errorMsg = latestRelease.message();
