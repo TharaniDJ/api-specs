@@ -184,7 +184,6 @@ function createMetadataFile(Repository repo, string version, string dirPath) ret
 }
 
 // Remove quotes from string
-// Remove quotes from string
 function removeQuotes(string s) returns string {
     return re `["']`.replace(s, "");
 }
