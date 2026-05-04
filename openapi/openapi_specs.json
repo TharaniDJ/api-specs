@@ -4,10 +4,30 @@
         "sourceUrl": "https://developers.hubspot.com/docs/api/crm/associations",
         "connectorRepo": "orgBBalLib/module-ballerinax-hubspot.crm.associations"
     },
+    {
+        "name": "Discord",
+        "sourceUrl": "https://discord.com/developers/docs/reference",
+        "connectorRepo": "orgBBalLib/module-ballerinax-discord"
+    }
+    ,
      {
         "name": "Asana",
         "sourceUrl": "https://github.com/Asana/openapi",
         "connectorRepo": "orgBBalLib/module-ballerinax-asana"
+    },
+    {
+        "name": "DocuSign Click",
+        "sourceUrl": "https://github.com/docusign/OpenAPI-Specifications",
+        "connectorRepo": "orgBBalLib/module-ballerinax-docusign.dsclick"
+    },
+    {
+        "name": "DocuSign eSign",
+        "sourceUrl": "https://github.com/docusign/OpenAPI-Specifications",
+        "connectorRepo": "orgBBalLib/module-ballerinax-docusign.dsesign"
+    },
+    {
+        "name": "DocuSign admin",
+        "sourceUrl": "https://github.com/docusign/OpenAPI-Specifications",
+        "connectorRepo": "orgBBalLib/module-ballerinax-docusign.dsadmin"
     }
-
 ]
