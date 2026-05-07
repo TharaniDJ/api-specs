@@ -62,35 +62,42 @@ jobs:
           cp target/openapi-validator-1.0.0-jar-with-dependencies.jar ../libs/openapi-validator.jar
           echo "JAR built and copied to dependabot/libs/openapi-validator.jar"
 
+      - name: Pull Ballerina dependencies
+        run: |
+          cd dependabot
+          bal clean
+
+          # Pull all dependencies from Ballerina Central before running.
+          # Retry on failure without clearing the cache — partial downloads
+          # accumulate across retries and clearing the cache makes things worse.
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Pulling dependencies, attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
+            bal build 2>&1 | tee /tmp/bal_build.log
+            BUILD_EXIT=${PIPESTATUS[0]}
+            if [ $BUILD_EXIT -eq 0 ]; then
+              echo "Dependencies pulled successfully"
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Pull failed — retrying in 60 seconds (cache kept)..."
+              sleep 60
+            else
+              echo "Failed to pull dependencies after $MAX_RETRIES attempts"
+              cat /tmp/bal_build.log
+              exit 1
+            fi
+          done
+
       - name: Run Dependabot Monitor
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           cd dependabot
-          bal clean
-
-          # Retry logic for transient Ballerina Central failures
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
-            if bal run; then
-              echo "Build succeeded!"
-              break
-            fi
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-              echo "Build failed, retrying in 30 seconds..."
-              sleep 30
-              rm -rf ~/.ballerina/repositories/central.ballerina.io/cache 2>/dev/null || true
-            else
-              echo "Build failed after $MAX_RETRIES attempts"
-              exit 1
-            fi
-          done
-
+          bal run
           cd ..
 
       - name: Check for updates
@@ -159,14 +166,48 @@ jobs:
 
           PR_TITLE="[Dependabot] chore: Update OpenAPI Specifications - $(date +%Y-%m-%d)"
 
-          PR_URL=$(gh pr create \
-            --title "$PR_TITLE" \
-            --body-file /tmp/pr_body.md \
-            --base main \
-            --head "$BRANCH_NAME")
+          # Check first in case the PR was created but the 504 swallowed the response.
+          EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number -q '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists: #$EXISTING_PR"
+            PR_NUMBER="$EXISTING_PR"
+          else
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            PR_NUMBER=""
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Creating pull request, attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
+              PR_URL=$(gh pr create \
+                --title "$PR_TITLE" \
+                --body-file /tmp/pr_body.md \
+                --base main \
+                --head "$BRANCH_NAME" 2>&1)
+              CREATE_EXIT=$?
+              if [ $CREATE_EXIT -eq 0 ]; then
+                echo "Pull Request created: $PR_URL"
+                PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+                break
+              fi
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "PR creation failed — retrying in 30 seconds..."
+                echo "Error output: $PR_URL"
+                sleep 30
+                # Re-check in case it was created despite the error response.
+                EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --json number -q '.[0].number' 2>/dev/null || echo "")
+                if [ -n "$EXISTING_PR" ]; then
+                  echo "PR appeared after retry check: #$EXISTING_PR"
+                  PR_NUMBER="$EXISTING_PR"
+                  break
+                fi
+              else
+                echo "Failed to create PR after $MAX_RETRIES attempts"
+                echo "Last error: $PR_URL"
+                exit 1
+              fi
+            done
+          fi
 
-          echo "Pull Request created: $PR_URL"
-          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
           echo "PR_NUMBER=${PR_NUMBER}" >> $GITHUB_ENV
 
       # ── Inline auto-review and merge ─────────────────────────────────────────
