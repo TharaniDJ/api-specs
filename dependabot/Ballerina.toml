@@ -1,5 +1,5 @@
 [package]
-org = "ballerinax"
+org = "wso2"
 name = "openapi_spec_finder"
 version = "1.0.0"
 distribution = "2201.13.1"
