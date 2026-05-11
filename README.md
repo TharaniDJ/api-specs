@@ -212,11 +212,13 @@ The file `openapi/openapi_specs.json` is the registry of all OpenAPI specs track
 - `connectorRepo`: The Ballerina connector repository associated with this API.
 
 ```json
-{
-    "name": "Asana",
-    "sourceUrl": "https://github.com/Asana/openapi",
-    "connectorRepo": "ballerina-platform/module-ballerinax-asana"
-}
+[
+    {
+        "name": "Asana",
+        "sourceUrl": "https://github.com/Asana/openapi",
+        "connectorRepo": "ballerina-platform/module-ballerinax-asana"
+    }
+]
 ```
 
 When adding a new API to be monitored, add an entry to this file following the structure above.
