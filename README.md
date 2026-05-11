@@ -269,6 +269,12 @@ The `openapi-dependabot.yml` workflow automates the full update lifecycle on a d
 | `ANTHROPIC_API_KEY` | Used by the Ballerina AI agent to discover spec URLs |
 | `CROSS_REPO_PAT` | Dispatches the connector regeneration workflow in `ballerina-library` |
 
+ **Least-privilege guidance:**
+ - Prefer the default `GITHUB_TOKEN` where it is sufficient for repository-local automation.
+ - If a personal access token is required, prefer a **fine-grained PAT** scoped only to the specific repository and only the minimum permissions needed for the workflow.
+ - For `REVIEWER_BOT_TOKEN`, use a dedicated bot or GitHub App identity with only the permissions required to review and merge pull requests.
+ - For `CROSS_REPO_PAT`, restrict the token to the target `ballerina-library` repository and grant only the minimum access needed to trigger the downstream workflow (for example, workflow dispatch / Actions access only). Prefer a GitHub App over a PAT where feasible.
+
 ### API Contract Validation
 
 An API contract is considered verified if _one of the following conditions_ is met:
